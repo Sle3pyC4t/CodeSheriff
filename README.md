@@ -6,9 +6,7 @@ A tool that uses LLM (Large Language Models) to detect potentially malicious cod
 
 - **Project Mode**: Scan a directory or file for malicious code
 - **GitLab Mode**: Scan files changed in a GitLab merge request
-- **Multi-Provider Support**: Compatible with various LLM providers (OpenAI, DeepSeek, Anthropic, etc.)
-- **Custom LLM Support**: Works with enterprise/internal LLM deployments
-- **Local LLM Support**: Can use locally hosted LLM servers
+- **Flexible LLM Support**: Works with various providers (OpenAI, DeepSeek, Anthropic), enterprise/internal deployments, and locally hosted servers
 - Structured output with malicious probability and reasoning
 - Support for multiple programming languages
 

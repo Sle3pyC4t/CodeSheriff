@@ -6,6 +6,7 @@
 
 - **项目模式**：扫描目录或文件中的恶意代码
 - **GitLab模式**：扫描GitLab合并请求中更改的文件
+- **灵活的LLM支持**：支持多种提供商（OpenAI、DeepSeek、Anthropic），企业/内部部署，以及本地托管服务器
 - 结构化输出，包含恶意概率和判断理由
 - 支持多种编程语言
 
@@ -49,9 +50,9 @@ CodeSheriff/
    cp env.example .env
    ```
 
-5. 编辑`.env`文件并添加你的DeepSeek API密钥：
+5. 编辑`.env`文件并添加你的API密钥：
    ```
-   DEEPSEEK_API_KEY=your_api_key_here
+   LLM_API_KEY=your_api_key_here
    ```
 
 ### 全局安装
@@ -72,9 +73,9 @@ CodeSheriff/
    cp env.example .env
    ```
 
-4. 编辑`.env`文件并添加你的DeepSeek API密钥：
+4. 编辑`.env`文件并添加你的API密钥：
    ```
-   DEEPSEEK_API_KEY=your_api_key_here
+   LLM_API_KEY=your_api_key_here
    ```
 
 ## 使用方法
@@ -111,6 +112,21 @@ code-sheriff gitlab /path/to/repo source_branch target_branch
 将结果保存到文件：
 ```
 code-sheriff gitlab /path/to/repo source_branch target_branch -o results.json
+```
+
+### 使用不同的LLM提供商
+
+你可以在运行时指定不同的LLM提供商和模型：
+
+```
+# 使用OpenAI
+code-sheriff project path/to/directory --provider openai --model gpt-4o --api-key your_api_key
+
+# 使用Anthropic
+code-sheriff project path/to/directory --provider anthropic --model claude-3-opus-20240229
+
+# 使用本地LLM服务器
+code-sheriff project path/to/directory --provider custom --model llama3 --api-url http://localhost:8000/v1/chat/completions
 ```
 
 ## 输出格式
@@ -178,9 +194,22 @@ code-sheriff gitlab /path/to/repo source_branch target_branch -o results.json
 
 你可以通过编辑`.env`文件来配置该工具：
 
-- `DEEPSEEK_API_KEY`：你的DeepSeek API密钥
-- `DEEPSEEK_API_URL`：DeepSeek API URL（默认：https://api.deepseek.com/v1/chat/completions）
-- `MODEL_NAME`：使用的模型（默认：deepseek-coder）
+- `LLM_PROVIDER`：LLM提供商（默认：deepseek）
+- `LLM_API_KEY`：你的API密钥
+- `LLM_API_URL`：API URL（默认：https://api.deepseek.com/v1/chat/completions）
+- `LLM_MODEL`：使用的模型（默认：deepseek-coder）
+- `MAX_CONCURRENT_REQUESTS`：最大并发API请求数（默认：10）
 - `MALICIOUS_THRESHOLD`：恶意代码概率阈值（默认：0.7）
 - `MAX_FILE_SIZE`：最大文件大小（字节）（默认：1000000）
-- `SUPPORTED_EXTENSIONS`：支持的文件扩展名，以逗号分隔 
+- `SUPPORTED_EXTENSIONS`：支持的文件扩展名，以逗号分隔
+
+### 支持的LLM提供商
+
+该工具支持以下LLM提供商：
+
+- `openai`：OpenAI API（GPT模型）
+- `deepseek`：DeepSeek API（默认）
+- `anthropic`：Anthropic API（Claude模型）
+- `azure`：Azure OpenAI服务
+- `custom`：自定义API端点（企业/内部LLMs）
+- `local`：本地托管的LLM服务器 
