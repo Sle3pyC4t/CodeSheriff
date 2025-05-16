@@ -3,6 +3,7 @@ import os
 import sys
 import json
 import argparse
+import logging
 from typing import Dict, Any
 
 from core.llm_client import LLMClient
@@ -42,6 +43,31 @@ def parse_args():
         action="store_true",
         help="Enable verbose output"
     )
+    common_parser.add_argument(
+        "-d", "--debug",
+        action="store_true",
+        help="Enable debug mode with detailed logging"
+    )
+    common_parser.add_argument(
+        "--provider",
+        default=None,
+        help=f"LLM provider to use (default: {config.LLM_PROVIDER}). Options: openai, deepseek, anthropic, azure, custom, local, etc."
+    )
+    common_parser.add_argument(
+        "--model",
+        default=None,
+        help=f"LLM model to use (default: {config.LLM_MODEL})"
+    )
+    common_parser.add_argument(
+        "--api-key",
+        default=None,
+        help="LLM API key (default: from environment variables)"
+    )
+    common_parser.add_argument(
+        "--api-url",
+        default=None,
+        help="LLM API URL (default: from environment variables)"
+    )
     
     # Project mode parser
     project_parser = subparsers.add_parser("project", help="Scan a project directory", parents=[common_parser])
@@ -71,14 +97,42 @@ def write_output(results: Dict[str, Any], output_path: str = None):
     else:
         print(output_json)
 
+def setup_logging(debug=False, verbose=False):
+    """设置日志级别"""
+    # 默认设置为WARNING级别
+    logging.getLogger().setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("LiteLLM").setLevel(logging.WARNING)
+    
+    if debug:
+        logging.getLogger("CodeSheriff").setLevel(logging.DEBUG)
+        # 开启LiteLLM的调试模式
+        import litellm
+        litellm.set_verbose = True
+        litellm._turn_on_debug()
+    elif verbose:
+        logging.getLogger("CodeSheriff").setLevel(logging.INFO)
+    else:
+        logging.getLogger("CodeSheriff").setLevel(logging.WARNING)
+
 def main():
     """Main entry point"""
     args = parse_args()
     
+    # 设置日志级别
+    setup_logging(debug=args.debug, verbose=args.verbose)
+    
+    logger = logging.getLogger("CodeSheriff")
+    
     # Check if API key is set
-    if not os.environ.get("DEEPSEEK_API_KEY"):
-        print("Error: DEEPSEEK_API_KEY environment variable is not set")
-        print("Please set it using: export DEEPSEEK_API_KEY=your_api_key")
+    api_key = args.api_key or config.LLM_API_KEY
+    provider = args.provider or config.LLM_PROVIDER
+    
+    if not api_key and provider not in ['local', 'custom']:
+        logger.error(f"Error: API key for {provider} is not set")
+        print(f"Error: API key for {provider} is not set")
+        print(f"Please set it using: export LLM_API_KEY=your_api_key or {provider.upper()}_API_KEY=your_api_key")
+        print("Or provide it using the --api-key option")
         sys.exit(1)
     
     # Override the MAX_CONCURRENT_REQUESTS if specified
@@ -89,19 +143,26 @@ def main():
     max_workers = args.workers or min(32, os.cpu_count() + 4)
     
     # Print configuration if verbose
-    if args.verbose:
-        print(f"Configuration:")
-        print(f"  - Worker threads: {max_workers}")
-        print(f"  - Concurrent API requests: {config.MAX_CONCURRENT_REQUESTS}")
-        print(f"  - Model: {config.MODEL_NAME}")
-        print(f"  - API URL: {config.DEEPSEEK_API_URL}")
-        print(f"  - Malicious threshold: {config.MALICIOUS_THRESHOLD}")
-        print(f"  - Max file size: {config.MAX_FILE_SIZE} bytes")
-        print(f"  - Supported extensions: {', '.join(config.SUPPORTED_EXTENSIONS)}")
-        print()
+    if args.verbose or args.debug:
+        logger.info(f"Configuration:")
+        logger.info(f"  - Provider: {args.provider or config.LLM_PROVIDER}")
+        logger.info(f"  - Model: {args.model or config.LLM_MODEL}")
+        logger.info(f"  - API URL: {args.api_url or config.LLM_API_URL}")
+        logger.info(f"  - Worker threads: {max_workers}")
+        logger.info(f"  - Concurrent API requests: {config.MAX_CONCURRENT_REQUESTS}")
+        logger.info(f"  - Malicious threshold: {config.MALICIOUS_THRESHOLD}")
+        logger.info(f"  - Max file size: {config.MAX_FILE_SIZE} bytes")
+        logger.info(f"  - Supported extensions: {', '.join(config.SUPPORTED_EXTENSIONS)}")
+        logger.info(f"  - Debug mode: {args.debug}")
     
     # Initialize LLM client
-    llm_client = LLMClient(verbose=args.verbose)
+    llm_client = LLMClient(
+        api_key=args.api_key,
+        api_url=args.api_url,
+        model=args.model,
+        provider=args.provider,
+        verbose=args.verbose or args.debug
+    )
     
     if args.mode == "project":
         # Project mode
@@ -109,13 +170,13 @@ def main():
         
         if os.path.isfile(args.path):
             # Scan a single file
-            if args.verbose:
-                print(f"Scanning file: {args.path}")
+            if args.verbose or args.debug:
+                logger.info(f"Scanning file: {args.path}")
             results = scanner.scan_file(args.path)
         else:
             # Scan a directory
-            if args.verbose:
-                print(f"Scanning directory: {args.path} (recursive: {args.recursive})")
+            if args.verbose or args.debug:
+                logger.info(f"Scanning directory: {args.path} (recursive: {args.recursive})")
             results = scanner.scan_directory(args.path, recursive=args.recursive)
         
         write_output(results, args.output)
@@ -123,11 +184,11 @@ def main():
     elif args.mode == "gitlab":
         # GitLab mode
         gitlab = GitLabIntegration(llm_client=llm_client, max_workers=max_workers)
-        if args.verbose:
-            print(f"Scanning merge request:")
-            print(f"  - Project directory: {args.project_dir}")
-            print(f"  - Source branch: {args.source_branch}")
-            print(f"  - Target branch: {args.target_branch}")
+        if args.verbose or args.debug:
+            logger.info(f"Scanning merge request:")
+            logger.info(f"  - Project directory: {args.project_dir}")
+            logger.info(f"  - Source branch: {args.source_branch}")
+            logger.info(f"  - Target branch: {args.target_branch}")
         results = gitlab.scan_merge_request(
             args.project_dir, 
             args.source_branch, 
@@ -137,6 +198,7 @@ def main():
         write_output(results, args.output)
     
     else:
+        logger.error("Error: No mode specified")
         print("Error: No mode specified")
         print("Use 'project' or 'gitlab' mode")
         sys.exit(1)

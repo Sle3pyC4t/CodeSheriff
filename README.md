@@ -6,6 +6,9 @@ A tool that uses LLM (Large Language Models) to detect potentially malicious cod
 
 - **Project Mode**: Scan a directory or file for malicious code
 - **GitLab Mode**: Scan files changed in a GitLab merge request
+- **Multi-Provider Support**: Compatible with various LLM providers (OpenAI, DeepSeek, Anthropic, etc.)
+- **Custom LLM Support**: Works with enterprise/internal LLM deployments
+- **Local LLM Support**: Can use locally hosted LLM servers
 - Structured output with malicious probability and reasoning
 - Support for multiple programming languages
 
@@ -49,9 +52,9 @@ CodeSheriff/
    cp env.example .env
    ```
 
-5. Edit the `.env` file and add your DeepSeek API key:
+5. Edit the `.env` file and add your API key:
    ```
-   DEEPSEEK_API_KEY=your_api_key_here
+   LLM_API_KEY=your_api_key_here
    ```
 
 ### Global Installation
@@ -72,9 +75,9 @@ CodeSheriff/
    cp env.example .env
    ```
 
-4. Edit the `.env` file and add your DeepSeek API key:
+4. Edit the `.env` file and add your API key:
    ```
-   DEEPSEEK_API_KEY=your_api_key_here
+   LLM_API_KEY=your_api_key_here
    ```
 
 ## Usage
@@ -111,6 +114,21 @@ code-sheriff gitlab /path/to/repo source_branch target_branch
 Save results to a file:
 ```
 code-sheriff gitlab /path/to/repo source_branch target_branch -o results.json
+```
+
+### Using Different LLM Providers
+
+You can specify a different LLM provider and model at runtime:
+
+```
+# Use OpenAI
+code-sheriff project path/to/directory --provider openai --model gpt-4o --api-key your_api_key
+
+# Use Anthropic
+code-sheriff project path/to/directory --provider anthropic --model claude-3-opus-20240229
+
+# Use a local LLM server
+code-sheriff project path/to/directory --provider custom --model llama3 --api-url http://localhost:8000/v1/chat/completions
 ```
 
 ## Output Format
@@ -178,9 +196,22 @@ You can modify the supported extensions in the `.env` file.
 
 You can configure the tool by editing the `.env` file:
 
-- `DEEPSEEK_API_KEY`: Your DeepSeek API key
-- `DEEPSEEK_API_URL`: DeepSeek API URL (default: https://api.deepseek.com/v1/chat/completions)
-- `MODEL_NAME`: Model to use (default: deepseek-coder)
+- `LLM_PROVIDER`: LLM provider to use (default: deepseek)
+- `LLM_API_KEY`: Your API key for the selected provider
+- `LLM_API_URL`: API URL for the selected provider
+- `LLM_MODEL`: Model to use (e.g., deepseek-coder, gpt-4o, claude-3-opus-20240229)
+- `MAX_CONCURRENT_REQUESTS`: Maximum number of concurrent API requests (default: 10)
 - `MALICIOUS_THRESHOLD`: Threshold for malicious code probability (default: 0.7)
 - `MAX_FILE_SIZE`: Maximum file size in bytes (default: 1000000)
-- `SUPPORTED_EXTENSIONS`: Comma-separated list of supported file extensions 
+- `SUPPORTED_EXTENSIONS`: Comma-separated list of supported file extensions
+
+### Supported LLM Providers
+
+The tool supports the following LLM providers:
+
+- `openai`: OpenAI API (GPT models)
+- `deepseek`: DeepSeek API (default)
+- `anthropic`: Anthropic API (Claude models)
+- `azure`: Azure OpenAI Service
+- `custom`: Custom API endpoints (enterprise/internal LLMs)
+- `local`: Locally hosted LLM servers 
