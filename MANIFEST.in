@@ -1,0 +1,5 @@
+include README.md
+include README_CN.md
+include env.example
+include requirements.txt
+include design.md 

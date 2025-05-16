@@ -1,0 +1,186 @@
+# CodeSheriff 代码警长
+
+一个使用大型语言模型（LLM）来检测文件或GitLab合并请求中潜在恶意代码的工具。
+
+## 功能特点
+
+- **项目模式**：扫描目录或文件中的恶意代码
+- **GitLab模式**：扫描GitLab合并请求中更改的文件
+- 结构化输出，包含恶意概率和判断理由
+- 支持多种编程语言
+
+## 项目结构
+
+```
+CodeSheriff/
+├── core/                  # 核心功能
+│   ├── llm_client.py      # LLM API客户端
+│   └── file_scanner.py    # 文件扫描逻辑
+├── integrations/          # 外部集成
+│   └── gitlab_integration.py  # GitLab合并请求集成
+├── utils/                 # 工具模块
+│   └── config.py          # 配置处理
+└── cli.py                 # 命令行界面
+```
+
+## 安装方法
+
+### 使用虚拟环境（推荐）
+
+1. 克隆仓库：
+   ```
+   git clone https://github.com/yourusername/CodeSheriff.git
+   cd CodeSheriff
+   ```
+
+2. 创建并激活虚拟环境：
+   ```
+   python -m venv venv
+   source venv/bin/activate  # Windows系统：venv\Scripts\activate
+   ```
+
+3. 以开发模式安装包：
+   ```
+   pip install -e .
+   ```
+
+4. 从模板创建`.env`文件：
+   ```
+   cp env.example .env
+   ```
+
+5. 编辑`.env`文件并添加你的DeepSeek API密钥：
+   ```
+   DEEPSEEK_API_KEY=your_api_key_here
+   ```
+
+### 全局安装
+
+1. 克隆仓库：
+   ```
+   git clone https://github.com/yourusername/CodeSheriff.git
+   cd CodeSheriff
+   ```
+
+2. 安装包：
+   ```
+   pip install .
+   ```
+
+3. 从模板创建`.env`文件：
+   ```
+   cp env.example .env
+   ```
+
+4. 编辑`.env`文件并添加你的DeepSeek API密钥：
+   ```
+   DEEPSEEK_API_KEY=your_api_key_here
+   ```
+
+## 使用方法
+
+### 项目模式
+
+扫描单个文件：
+```
+code-sheriff project path/to/file.py
+```
+
+扫描目录（非递归）：
+```
+code-sheriff project path/to/directory
+```
+
+递归扫描目录：
+```
+code-sheriff project path/to/directory -r
+```
+
+将结果保存到文件：
+```
+code-sheriff project path/to/directory -r -o results.json
+```
+
+### GitLab模式
+
+扫描合并请求中更改的文件：
+```
+code-sheriff gitlab /path/to/repo source_branch target_branch
+```
+
+将结果保存到文件：
+```
+code-sheriff gitlab /path/to/repo source_branch target_branch -o results.json
+```
+
+## 输出格式
+
+该工具输出具有以下格式的JSON结构：
+
+```json
+{
+  "summary": {
+    "total_files": 10,
+    "malicious_files": 1,
+    "suspicious_files": 2,
+    "clean_files": 6,
+    "error_files": 1
+  },
+  "malicious_files": [
+    {
+      "file_path": "path/to/malicious.py",
+      "probability": 0.95,
+      "reasoning": "This file contains code that attempts to exfiltrate sensitive data...",
+      "threats": ["data_exfiltration", "backdoor"]
+    }
+  ],
+  "suspicious_files": [
+    {
+      "file_path": "path/to/suspicious.js",
+      "probability": 0.6,
+      "reasoning": "This file uses obfuscated code that might hide malicious intent..."
+    }
+  ],
+  "clean_files": [
+    {
+      "file_path": "path/to/clean.py"
+    }
+  ],
+  "error_files": [
+    {
+      "file_path": "path/to/error.bin",
+      "error": "Unsupported file extension: .bin"
+    }
+  ]
+}
+```
+
+## 支持的文件扩展名
+
+默认情况下，该工具支持以下文件扩展名：
+- `.py` (Python)
+- `.js` (JavaScript)
+- `.ts` (TypeScript)
+- `.php` (PHP)
+- `.java` (Java)
+- `.c` (C)
+- `.cpp` (C++)
+- `.cs` (C#)
+- `.go` (Go)
+- `.rb` (Ruby)
+- `.pl` (Perl)
+- `.sh` (Shell)
+- `.ps1` (PowerShell)
+
+你可以在`.env`文件中修改支持的扩展名。
+
+## 配置
+
+你可以通过编辑`.env`文件来配置该工具：
+
+- `DEEPSEEK_API_KEY`：你的DeepSeek API密钥
+- `DEEPSEEK_API_URL`：DeepSeek API URL（默认：https://api.deepseek.com/v1/chat/completions）
+- `MODEL_NAME`：使用的模型（默认：deepseek-coder）
+- `MALICIOUS_THRESHOLD`：恶意代码概率阈值（默认：0.7）
+- `MAX_FILE_SIZE`：最大文件大小（字节）（默认：1000000）
+- `SUPPORTED_EXTENSIONS`：支持的文件扩展名，以逗号分隔 
