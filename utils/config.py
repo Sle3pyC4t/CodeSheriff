@@ -7,7 +7,7 @@ load_dotenv()
 # DeepSeek API configuration
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 DEEPSEEK_API_URL = os.getenv("DEEPSEEK_API_URL", "https://api.deepseek.com/v1/chat/completions")
-MAX_CONCURRENT_REQUESTS = int(os.getenv("MAX_CONCURRENT_REQUESTS", "5"))  # Default to 5 concurrent requests
+MAX_CONCURRENT_REQUESTS = int(os.getenv("MAX_CONCURRENT_REQUESTS", "10"))  # Default to 10 concurrent requests
 
 # Model configuration
 MODEL_NAME = os.getenv("MODEL_NAME", "deepseek-coder")

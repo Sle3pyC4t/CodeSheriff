@@ -8,6 +8,7 @@ from typing import Dict, Any
 from core.llm_client import LLMClient
 from core.file_scanner import FileScanner
 from integrations.gitlab_integration import GitLabIntegration
+from utils import config
 
 def parse_args():
     """Parse command line arguments"""
@@ -27,8 +28,19 @@ def parse_args():
         help="Maximum number of worker threads (default: CPU count + 4)"
     )
     common_parser.add_argument(
+        "-c", "--concurrent-requests",
+        type=int,
+        default=None,
+        help=f"Maximum number of concurrent API requests (default: {config.MAX_CONCURRENT_REQUESTS})"
+    )
+    common_parser.add_argument(
         "-o", "--output", 
         help="Output file path (default: stdout)"
+    )
+    common_parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Enable verbose output"
     )
     
     # Project mode parser
@@ -69,25 +81,53 @@ def main():
         print("Please set it using: export DEEPSEEK_API_KEY=your_api_key")
         sys.exit(1)
     
+    # Override the MAX_CONCURRENT_REQUESTS if specified
+    if args.concurrent_requests is not None:
+        config.MAX_CONCURRENT_REQUESTS = args.concurrent_requests
+    
+    # Determine the number of worker threads
+    max_workers = args.workers or min(32, os.cpu_count() + 4)
+    
+    # Print configuration if verbose
+    if args.verbose:
+        print(f"Configuration:")
+        print(f"  - Worker threads: {max_workers}")
+        print(f"  - Concurrent API requests: {config.MAX_CONCURRENT_REQUESTS}")
+        print(f"  - Model: {config.MODEL_NAME}")
+        print(f"  - API URL: {config.DEEPSEEK_API_URL}")
+        print(f"  - Malicious threshold: {config.MALICIOUS_THRESHOLD}")
+        print(f"  - Max file size: {config.MAX_FILE_SIZE} bytes")
+        print(f"  - Supported extensions: {', '.join(config.SUPPORTED_EXTENSIONS)}")
+        print()
+    
     # Initialize LLM client
-    llm_client = LLMClient()
+    llm_client = LLMClient(verbose=args.verbose)
     
     if args.mode == "project":
         # Project mode
-        scanner = FileScanner(llm_client=llm_client, max_workers=args.workers)
+        scanner = FileScanner(llm_client=llm_client, max_workers=max_workers)
         
         if os.path.isfile(args.path):
             # Scan a single file
+            if args.verbose:
+                print(f"Scanning file: {args.path}")
             results = scanner.scan_file(args.path)
         else:
             # Scan a directory
+            if args.verbose:
+                print(f"Scanning directory: {args.path} (recursive: {args.recursive})")
             results = scanner.scan_directory(args.path, recursive=args.recursive)
         
         write_output(results, args.output)
     
     elif args.mode == "gitlab":
         # GitLab mode
-        gitlab = GitLabIntegration(llm_client=llm_client, max_workers=args.workers)
+        gitlab = GitLabIntegration(llm_client=llm_client, max_workers=max_workers)
+        if args.verbose:
+            print(f"Scanning merge request:")
+            print(f"  - Project directory: {args.project_dir}")
+            print(f"  - Source branch: {args.source_branch}")
+            print(f"  - Target branch: {args.target_branch}")
         results = gitlab.scan_merge_request(
             args.project_dir, 
             args.source_branch, 

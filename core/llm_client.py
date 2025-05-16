@@ -1,26 +1,31 @@
 import json
 import requests
 from typing import Dict, Any, Optional
-from threading import Lock
 import threading
+import os
 
 from utils import config
 
 class LLMClient:
-    def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None, verbose: bool = False):
         """
         Initialize the LLM client
         
         Args:
             api_key: DeepSeek API key (defaults to config)
             api_url: DeepSeek API URL (defaults to config)
+            verbose: Whether to print verbose output
         """
         self.api_key = api_key or config.DEEPSEEK_API_KEY
         self.api_url = api_url or config.DEEPSEEK_API_URL
-        self.api_lock = Lock()
+        self.verbose = verbose
         
         # Semaphore to limit concurrent API requests
         self.request_semaphore = threading.Semaphore(config.MAX_CONCURRENT_REQUESTS)
+        
+        # Counter for active requests
+        self.active_requests = 0
+        self.counter_lock = threading.Lock()
         
         if not self.api_key:
             raise ValueError("DeepSeek API key is required. Set DEEPSEEK_API_KEY in .env file or pass it directly.")
@@ -40,7 +45,7 @@ class LLMClient:
         prompt = self._create_malicious_code_prompt(code, file_path)
         
         # Call the DeepSeek API
-        response = self._call_api(prompt)
+        response = self._call_api(prompt, file_path)
         
         # Parse the response
         return self._parse_response(response)
@@ -69,7 +74,7 @@ Provide your analysis in the following JSON format:
 Only respond with valid JSON. Do not include any other text in your response.
 """
     
-    def _call_api(self, prompt: str) -> Dict[str, Any]:
+    def _call_api(self, prompt: str, file_path: str) -> Dict[str, Any]:
         """Call the DeepSeek API with the given prompt"""
         headers = {
             "Content-Type": "application/json",
@@ -85,16 +90,28 @@ Only respond with valid JSON. Do not include any other text in your response.
             "response_format": {"type": "json_object"}
         }
         
-        # Use a session for better connection reuse
-        session = requests.Session()
-        
         # Use a semaphore to limit concurrent API requests
         with self.request_semaphore:
-            # Use a lock to ensure thread safety when making API calls
-            with self.api_lock:
+            # Update active requests counter
+            with self.counter_lock:
+                self.active_requests += 1
+                current_active = self.active_requests
+            
+            # Print debug info if verbose
+            if self.verbose:
+                filename = os.path.basename(file_path)
+                print(f"[Thread {threading.current_thread().name}] Analyzing {filename} (Active requests: {current_active}/{config.MAX_CONCURRENT_REQUESTS})")
+            
+            try:
+                # Use a session for better connection reuse
+                session = requests.Session()
                 response = session.post(self.api_url, headers=headers, json=payload)
                 response.raise_for_status()
                 return response.json()
+            finally:
+                # Update active requests counter
+                with self.counter_lock:
+                    self.active_requests -= 1
     
     def _parse_response(self, response: Dict[str, Any]) -> Dict[str, Any]:
         """Parse the API response to extract the analysis results"""
