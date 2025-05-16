@@ -30,7 +30,7 @@ CodeSheriff/
 
 1. 克隆仓库：
    ```
-   git clone https://github.com/yourusername/CodeSheriff.git
+   git clone https://github.com/Sle3pyC4t/CodeSheriff.git
    cd CodeSheriff
    ```
 
@@ -59,7 +59,7 @@ CodeSheriff/
 
 1. 克隆仓库：
    ```
-   git clone https://github.com/yourusername/CodeSheriff.git
+   git clone https://github.com/Sle3pyC4t/CodeSheriff.git
    cd CodeSheriff
    ```
 
