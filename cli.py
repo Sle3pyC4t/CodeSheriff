@@ -18,28 +18,33 @@ def parse_args():
     # Create subparsers for different modes
     subparsers = parser.add_subparsers(dest="mode", help="Operation mode")
     
+    # Common arguments
+    common_parser = argparse.ArgumentParser(add_help=False)
+    common_parser.add_argument(
+        "-w", "--workers",
+        type=int,
+        default=None,
+        help="Maximum number of worker threads (default: CPU count + 4)"
+    )
+    common_parser.add_argument(
+        "-o", "--output", 
+        help="Output file path (default: stdout)"
+    )
+    
     # Project mode parser
-    project_parser = subparsers.add_parser("project", help="Scan a project directory")
+    project_parser = subparsers.add_parser("project", help="Scan a project directory", parents=[common_parser])
     project_parser.add_argument("path", help="Path to the project directory or file")
     project_parser.add_argument(
         "-r", "--recursive", 
         action="store_true", 
         help="Scan subdirectories recursively"
     )
-    project_parser.add_argument(
-        "-o", "--output", 
-        help="Output file path (default: stdout)"
-    )
     
     # GitLab mode parser
-    gitlab_parser = subparsers.add_parser("gitlab", help="Scan a GitLab merge request")
+    gitlab_parser = subparsers.add_parser("gitlab", help="Scan a GitLab merge request", parents=[common_parser])
     gitlab_parser.add_argument("project_dir", help="Path to the project directory")
     gitlab_parser.add_argument("source_branch", help="Source branch of the merge request")
     gitlab_parser.add_argument("target_branch", help="Target branch of the merge request")
-    gitlab_parser.add_argument(
-        "-o", "--output", 
-        help="Output file path (default: stdout)"
-    )
     
     return parser.parse_args()
 
@@ -69,7 +74,7 @@ def main():
     
     if args.mode == "project":
         # Project mode
-        scanner = FileScanner(llm_client=llm_client)
+        scanner = FileScanner(llm_client=llm_client, max_workers=args.workers)
         
         if os.path.isfile(args.path):
             # Scan a single file
@@ -82,7 +87,7 @@ def main():
     
     elif args.mode == "gitlab":
         # GitLab mode
-        gitlab = GitLabIntegration(llm_client=llm_client)
+        gitlab = GitLabIntegration(llm_client=llm_client, max_workers=args.workers)
         results = gitlab.scan_merge_request(
             args.project_dir, 
             args.source_branch, 

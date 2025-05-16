@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: colorinsa
+Version: 0.0.1
+Summary: Color your terminal
+Author-email: Jason Dsouza <email@gmail.com>
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown

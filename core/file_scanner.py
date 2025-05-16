@@ -3,19 +3,24 @@ import sys
 from typing import List, Dict, Any, Generator, Tuple
 from pathlib import Path
 from tqdm import tqdm
+import concurrent.futures
+from threading import Lock
 
 from utils import config
 from core.llm_client import LLMClient
 
 class FileScanner:
-    def __init__(self, llm_client: LLMClient = None):
+    def __init__(self, llm_client: LLMClient = None, max_workers: int = None):
         """
         Initialize the file scanner
         
         Args:
             llm_client: LLM client instance (creates one if not provided)
+            max_workers: Maximum number of worker threads (defaults to number of processors)
         """
         self.llm_client = llm_client or LLMClient()
+        self.max_workers = max_workers or min(32, os.cpu_count() + 4)
+        self.progress_lock = Lock()
         
     def scan_directory(self, directory_path: str, recursive: bool = True) -> Dict[str, Any]:
         """
@@ -42,14 +47,32 @@ class FileScanner:
         if not files_to_scan:
             return {"error": "No supported files found to scan"}
         
-        # Scan each file
+        # Scan files in parallel
         results = []
-        for file_path in tqdm(files_to_scan, desc="Scanning files", file=sys.stdout):
-            result = self.scan_file(file_path)
-            results.append(result)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            # Create a shared progress bar
+            progress = tqdm(total=len(files_to_scan), desc="Scanning files", file=sys.stdout)
+            
+            # Submit all scan tasks
+            future_to_file = {executor.submit(self._scan_file_with_progress, file_path, progress): file_path 
+                             for file_path in files_to_scan}
+            
+            # Process results as they complete
+            for future in concurrent.futures.as_completed(future_to_file):
+                result = future.result()
+                results.append(result)
+                
+            progress.close()
         
         # Aggregate results
         return self._aggregate_results(results)
+    
+    def _scan_file_with_progress(self, file_path: str, progress: tqdm) -> Dict[str, Any]:
+        """Scan a file and update the progress bar"""
+        result = self.scan_file(file_path)
+        with self.progress_lock:
+            progress.update(1)
+        return result
     
     def scan_file(self, file_path: str) -> Dict[str, Any]:
         """

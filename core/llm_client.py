@@ -1,6 +1,8 @@
 import json
 import requests
 from typing import Dict, Any, Optional
+from threading import Lock
+import threading
 
 from utils import config
 
@@ -15,6 +17,10 @@ class LLMClient:
         """
         self.api_key = api_key or config.DEEPSEEK_API_KEY
         self.api_url = api_url or config.DEEPSEEK_API_URL
+        self.api_lock = Lock()
+        
+        # Semaphore to limit concurrent API requests
+        self.request_semaphore = threading.Semaphore(config.MAX_CONCURRENT_REQUESTS)
         
         if not self.api_key:
             raise ValueError("DeepSeek API key is required. Set DEEPSEEK_API_KEY in .env file or pass it directly.")
@@ -79,10 +85,16 @@ Only respond with valid JSON. Do not include any other text in your response.
             "response_format": {"type": "json_object"}
         }
         
-        response = requests.post(self.api_url, headers=headers, json=payload)
-        response.raise_for_status()
+        # Use a session for better connection reuse
+        session = requests.Session()
         
-        return response.json()
+        # Use a semaphore to limit concurrent API requests
+        with self.request_semaphore:
+            # Use a lock to ensure thread safety when making API calls
+            with self.api_lock:
+                response = session.post(self.api_url, headers=headers, json=payload)
+                response.raise_for_status()
+                return response.json()
     
     def _parse_response(self, response: Dict[str, Any]) -> Dict[str, Any]:
         """Parse the API response to extract the analysis results"""
