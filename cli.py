@@ -5,9 +5,9 @@ import json
 import argparse
 from typing import Dict, Any
 
-from CodeSheriff.core.llm_client import LLMClient
-from CodeSheriff.core.file_scanner import FileScanner
-from CodeSheriff.integrations.gitlab_integration import GitLabIntegration
+from core.llm_client import LLMClient
+from core.file_scanner import FileScanner
+from integrations.gitlab_integration import GitLabIntegration
 
 def parse_args():
     """Parse command line arguments"""

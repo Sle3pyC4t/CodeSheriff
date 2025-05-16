@@ -4,8 +4,8 @@ from typing import List, Dict, Any, Generator, Tuple
 from pathlib import Path
 from tqdm import tqdm
 
-from CodeSheriff.utils import config
-from CodeSheriff.core.llm_client import LLMClient
+from utils import config
+from core.llm_client import LLMClient
 
 class FileScanner:
     def __init__(self, llm_client: LLMClient = None):

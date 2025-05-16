@@ -2,7 +2,7 @@ import json
 import requests
 from typing import Dict, Any, Optional
 
-from CodeSheriff.utils import config
+from utils import config
 
 class LLMClient:
     def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None):

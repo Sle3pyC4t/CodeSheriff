@@ -3,8 +3,8 @@ import json
 import subprocess
 from typing import List, Dict, Any, Optional
 
-from CodeSheriff.core.llm_client import LLMClient
-from CodeSheriff.core.file_scanner import FileScanner
+from core.llm_client import LLMClient
+from core.file_scanner import FileScanner
 
 class GitLabIntegration:
     def __init__(self, llm_client: Optional[LLMClient] = None):
