@@ -3,7 +3,7 @@ import os
 import json
 import subprocess
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 import tempfile
 import shutil
@@ -29,7 +29,8 @@ def run_code_sheriff(package_path, temp_dir):
             ["code-sheriff", "project", package_path, "-r", "-o", output_file],
             check=True,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
+            stderr=subprocess.PIPE,
+            timeout=60  # 60 seconds timeout
         )
         execution_time = time.time() - start_time
         
@@ -37,6 +38,9 @@ def run_code_sheriff(package_path, temp_dir):
             results = json.load(f)
             
         return results, execution_time
+    except subprocess.TimeoutExpired:
+        print(f"{Colors.YELLOW}Timeout analyzing {package_path} (exceeded 60 seconds){Colors.ENDC}")
+        return None, 60
     except subprocess.CalledProcessError as e:
         print(f"{Colors.RED}Error analyzing {package_path}: {e}{Colors.ENDC}")
         print(f"stdout: {e.stdout.decode() if e.stdout else 'None'}")
@@ -78,7 +82,7 @@ def benchmark():
     # Create a temporary directory for results
     with tempfile.TemporaryDirectory() as temp_dir:
         # Create a thread pool for parallel processing
-        with ThreadPoolExecutor(max_workers=min(os.cpu_count(), 4)) as executor:
+        with ThreadPoolExecutor(max_workers=min(os.cpu_count()*2, 32)) as executor:
             # Submit all packages for processing
             future_to_package = {
                 executor.submit(run_code_sheriff, str(pkg), temp_dir): pkg
@@ -89,25 +93,23 @@ def benchmark():
             results = {}
             total_time = 0
             errors = 0
+            timeouts = 0
+            completed = 0
             
             # Process results as they complete
             print(f"{Colors.HEADER}Starting analysis...{Colors.ENDC}")
-            for i, future in enumerate(future_to_package, 1):
+            for future in as_completed(future_to_package):
                 package = future_to_package[future]
+                completed += 1
                 try:
                     package_results, execution_time = future.result()
                     package_classification = classify_package(package_results)
                     
-                    results[package.name] = {
-                        "classification": package_classification,
-                        "execution_time": execution_time,
-                        "details": package_results
-                    }
-                    
-                    total_time += execution_time
-                    
-                    # Print progress
-                    if package_classification == "malicious":
+                    if execution_time == 60 and package_results is None:
+                        status = f"{Colors.YELLOW}TIMEOUT{Colors.ENDC}"
+                        timeouts += 1
+                        package_classification = "timeout"
+                    elif package_classification == "malicious":
                         status = f"{Colors.RED}MALICIOUS{Colors.ENDC}"
                     elif package_classification == "suspicious":
                         status = f"{Colors.YELLOW}SUSPICIOUS{Colors.ENDC}"
@@ -117,11 +119,25 @@ def benchmark():
                         status = f"{Colors.RED}ERROR{Colors.ENDC}"
                         errors += 1
                     
-                    print(f"[{i}/{len(packages)}] {package.name}: {status} in {execution_time:.2f}s")
+                    results[package.name] = {
+                        "classification": package_classification,
+                        "execution_time": execution_time,
+                        "details": package_results
+                    }
+                    
+                    total_time += execution_time
+                    
+                    print(f"[{completed}/{len(packages)}] {package.name}: {status} in {execution_time:.2f}s")
                     
                 except Exception as e:
-                    print(f"[{i}/{len(packages)}] {Colors.RED}Error processing {package.name}: {e}{Colors.ENDC}")
+                    print(f"[{completed}/{len(packages)}] {Colors.RED}Error processing {package.name}: {e}{Colors.ENDC}")
                     errors += 1
+                    results[package.name] = {
+                        "classification": "error",
+                        "execution_time": 0,
+                        "details": None,
+                        "error": str(e)
+                    }
             
         # Calculate and print statistics
         malicious_count = sum(1 for r in results.values() if r["classification"] == "malicious")
@@ -133,8 +149,9 @@ def benchmark():
         print(f"{Colors.RED}{Colors.BOLD}Malicious packages:{Colors.ENDC} {malicious_count} ({malicious_count/len(packages)*100:.1f}%)")
         print(f"{Colors.YELLOW}{Colors.BOLD}Suspicious packages:{Colors.ENDC} {suspicious_count} ({suspicious_count/len(packages)*100:.1f}%)")
         print(f"{Colors.GREEN}{Colors.BOLD}Clean packages:{Colors.ENDC} {clean_count} ({clean_count/len(packages)*100:.1f}%)")
+        print(f"{Colors.YELLOW}{Colors.BOLD}Timeouts:{Colors.ENDC} {timeouts} ({timeouts/len(packages)*100:.1f}%)")
         if errors > 0:
-            print(f"{Colors.RED}{Colors.BOLD}Errors:{Colors.ENDC} {errors}")
+            print(f"{Colors.RED}{Colors.BOLD}Errors:{Colors.ENDC} {errors} ({errors/len(packages)*100:.1f}%)")
         print(f"{Colors.BOLD}Total analysis time:{Colors.ENDC} {total_time:.2f}s")
         print(f"{Colors.BOLD}Average time per package:{Colors.ENDC} {total_time/len(packages):.2f}s")
         

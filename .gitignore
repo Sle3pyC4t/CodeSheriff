@@ -36,6 +36,7 @@ var/
 
 # Test results
 results.json
+benchmark_results.json
 
 # macOS
 .DS_Store 
