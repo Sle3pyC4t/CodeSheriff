@@ -21,6 +21,7 @@ CodeSheriff/
 │   └── gitlab_integration.py  # GitLab MR integration
 ├── utils/                 # Utility modules
 │   └── config.py          # Configuration handling
+├── testcases/             # Malicious code test samples (submodule)
 └── cli.py                 # Command-line interface
 ```
 
@@ -28,10 +29,18 @@ CodeSheriff/
 
 ### Using Virtual Environment (recommended)
 
-1. Clone the repository:
+1. Clone the repository with submodules:
+   ```
+   git clone --recurse-submodules https://github.com/Sle3pyC4t/CodeSheriff.git
+   cd CodeSheriff
+   ```
+
+   Or if you've already cloned the repository without submodules:
    ```
    git clone https://github.com/Sle3pyC4t/CodeSheriff.git
    cd CodeSheriff
+   git submodule init
+   git submodule update
    ```
 
 2. Create and activate a virtual environment:
@@ -57,10 +66,18 @@ CodeSheriff/
 
 ### Global Installation
 
-1. Clone the repository:
+1. Clone the repository with submodules:
+   ```
+   git clone --recurse-submodules https://github.com/Sle3pyC4t/CodeSheriff.git
+   cd CodeSheriff
+   ```
+
+   Or if you've already cloned the repository without submodules:
    ```
    git clone https://github.com/Sle3pyC4t/CodeSheriff.git
    cd CodeSheriff
+   git submodule init
+   git submodule update
    ```
 
 2. Install the package:
@@ -213,3 +230,15 @@ The tool supports the following LLM providers:
 - `azure`: Azure OpenAI Service
 - `custom`: Custom API endpoints (enterprise/internal LLMs)
 - `local`: Locally hosted LLM servers 
+
+## Testcases
+
+The repository includes a collection of malicious code samples as a Git submodule in the `testcases/` directory. These samples can be used for testing and validating the tool's detection capabilities.
+
+To scan the test samples:
+
+```
+code-sheriff project testcases -r
+```
+
+Note: The test samples contain actual malicious code patterns, though they are not harmful when merely sitting on disk. They should be used for educational and testing purposes only. 

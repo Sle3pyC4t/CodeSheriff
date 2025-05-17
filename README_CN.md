@@ -21,6 +21,7 @@ CodeSheriff/
 │   └── gitlab_integration.py  # GitLab合并请求集成
 ├── utils/                 # 工具模块
 │   └── config.py          # 配置处理
+├── testcases/             # 恶意代码测试样本（子模块）
 └── cli.py                 # 命令行界面
 ```
 
@@ -28,10 +29,18 @@ CodeSheriff/
 
 ### 使用虚拟环境（推荐）
 
-1. 克隆仓库：
+1. 克隆仓库（包含子模块）：
+   ```
+   git clone --recurse-submodules https://github.com/Sle3pyC4t/CodeSheriff.git
+   cd CodeSheriff
+   ```
+
+   或者如果你已经克隆了仓库但没有子模块：
    ```
    git clone https://github.com/Sle3pyC4t/CodeSheriff.git
    cd CodeSheriff
+   git submodule init
+   git submodule update
    ```
 
 2. 创建并激活虚拟环境：
@@ -57,10 +66,18 @@ CodeSheriff/
 
 ### 全局安装
 
-1. 克隆仓库：
+1. 克隆仓库（包含子模块）：
+   ```
+   git clone --recurse-submodules https://github.com/Sle3pyC4t/CodeSheriff.git
+   cd CodeSheriff
+   ```
+
+   或者如果你已经克隆了仓库但没有子模块：
    ```
    git clone https://github.com/Sle3pyC4t/CodeSheriff.git
    cd CodeSheriff
+   git submodule init
+   git submodule update
    ```
 
 2. 安装包：
@@ -212,4 +229,16 @@ code-sheriff project path/to/directory --provider custom --model llama3 --api-ur
 - `anthropic`：Anthropic API（Claude模型）
 - `azure`：Azure OpenAI服务
 - `custom`：自定义API端点（企业/内部LLMs）
-- `local`：本地托管的LLM服务器 
+- `local`：本地托管的LLM服务器
+
+## 测试样本
+
+该仓库在`testcases/`目录中包含一个恶意代码样本集合，作为Git子模块。这些样本可用于测试和验证工具的检测能力。
+
+要扫描测试样本：
+
+```
+code-sheriff project testcases -r
+```
+
+注意：测试样本包含实际的恶意代码模式，但它们仅存储在磁盘上不会造成危害。这些样本应仅用于教育和测试目的。 
