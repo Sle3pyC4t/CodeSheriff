@@ -1,2 +1,0 @@
-from .qtpv import *
-
